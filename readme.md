@@ -9,9 +9,9 @@ Smart Commute Assistant is a CLI-based Python project that helps users plan thei
 * Give commute suggestions
 
 ### How to Clone
-`git clone <your-repo-url> `
+`git clone https://github.com/surekhadarmavarapu-panda/smart-commute-assistant.git `
 
-`cd <repo-folder-name>`
+`cd smart-commute-assistant`
 
 ### How to Run
 
