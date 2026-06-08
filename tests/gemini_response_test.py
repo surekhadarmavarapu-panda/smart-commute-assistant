@@ -1,97 +1,99 @@
-from unittest.mock import patch
+import json
+import urllib.error
+from unittest.mock import Mock, patch
 
-from agentic_ai.commute_agent import (
-    SmartCommuteAgent
-)
-import pytest
+from agentic_ai.gemini_client import call_gemini
 
-@patch(
-    "agentic_ai.commute_agent.call_gemini"
-)
-def test_gemini_response(
-        mock_gemini
-):
+@patch("urllib.request.urlopen")
+def test_call_gemini_success(mock_urlopen):
 
-    mock_gemini.return_value = {
-        "candidates": [
+    mock_response = Mock()
+    mock_response.read.return_value = json.dumps({
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": "Leave at 9:15 AM"
+                }]
+            }
+        }]
+    }).encode("utf-8")
+
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+
+    result = call_gemini(
+        messages=[
             {
-                "content": {
-                    "parts": [
-                        {
-                            "text":
-                            "Recommendation: Leave at 9:15 AM"
-                        }
-                    ]
-                }
+                "role": "user",
+                "parts": [{"text": "When should I leave?"}]
             }
         ]
-    }
-
-    agent = SmartCommuteAgent()
-
-    result = agent.run(
-        question="When should I leave for work?",
-        user_id="user1"
     )
 
-    assert "Recommendation" in result
+    assert "candidates" in result
+    assert result["candidates"][0]["content"]["parts"][0]["text"] == "Leave at 9:15 AM"
 
 
-@patch(
-    "agentic_ai.commute_agent.call_gemini"
-)
-def test_gemini_quota_exceeded(
-        mock_gemini
-):
+@patch("urllib.request.urlopen")
+def test_call_gemini_http_error(mock_urlopen):
 
-    mock_gemini.return_value = {
-        "error":
-        "Gemini API quota exceeded. Please try again after a minute."
-    }
-
-    agent = SmartCommuteAgent()
-
-    result = agent.run(
-        question="When should I leave for work?",
-        user_id="user1"
+    mock_urlopen.side_effect = urllib.error.HTTPError(
+        url="http://test.com",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,
+        fp=None
     )
 
-    assert (
-        "quota exceeded"
-        in result.lower()
+    result = call_gemini(
+        messages=[
+            {
+                "role": "user",
+                "parts": [{"text": "When should I leave?"}]
+            }
+        ]
     )
 
+    assert "error" in result
+    assert "500" in result["error"]
 
-@patch(
-    "agentic_ai.commute_agent.call_gemini"
-)
-def test_gemini_api_failure(
-        mock_gemini
-):
 
-    mock_gemini.return_value = {
-        "error":
-        "Gemini API failed with status 500"
-    }
+@patch("urllib.request.urlopen")
+def test_call_gemini_with_tools(mock_urlopen):
 
-    agent = SmartCommuteAgent()
+    mock_response = Mock()
+    mock_response.read.return_value = json.dumps({
+        "candidates": [{
+            "content": {
+                "parts": [{
+                    "text": "Tool call successful"
+                }]
+            }
+        }]
+    }).encode("utf-8")
 
-    result = agent.run(
-        question="When should I leave for work?",
-        user_id="user1"
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+
+    tools = [
+        {
+            "name": "get_weather",
+            "description": "Get weather",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string"}
+                }
+            }
+        }
+    ]
+
+    result = call_gemini(
+        messages=[
+            {
+                "role": "user",
+                "parts": [{"text": "What's the weather?"}]
+            }
+        ],
+        tools=tools
     )
 
-    assert (
-        "failed"
-        in result.lower()
-    )
-
-def test_invalid_user():
-
-    agent = SmartCommuteAgent()
-
-    with pytest.raises(ValueError):
-        agent.run(
-            question="When should I leave?",
-            user_id="invalid_user"
-        )
+    assert "candidates" in result

@@ -1,38 +1,48 @@
-from agentic_ai.commute_agent import (
-    SmartCommuteAgent
-)
 import pytest
 
+from agentic_ai.commute_agent import SmartCommuteAgent
+from agentic_ai.tools_registry import TOOLS_SCHEMA
+
 def test_invalid_user():
-
-    agent = SmartCommuteAgent()
-
     with pytest.raises(ValueError):
-        agent.run(
-            question="When should I leave?",
-            user_id="invalid_user"
+        SmartCommuteAgent(
+            userid="invalid_user",
+            source=None,
+            destination=None
         )
 
+def test_tools_registered():
+    tool_names = {tool["name"] for tool in TOOLS_SCHEMA}
 
-def test_select_tools():
+    assert "get_user_details" in tool_names
+    assert "get_calendar_events" in tool_names
+    assert "get_traffic_status" in tool_names
+    assert "get_weather" in tool_names
 
-    agent = SmartCommuteAgent()
-
-    tools = agent.select_tools(
-        "When should I leave?"
+def test_agent_initialization():
+    agent = SmartCommuteAgent(
+        userid="user1",
+        source=None,
+        destination=None
     )
 
-    assert (
-        "get_calendar_events"
-        in tools
+    assert agent.user_id == "user1"
+    assert agent.user is not None
+    assert agent.source is not None
+    assert agent.destination is not None
+    assert len(agent.messages) > 0
+
+def test_add_message():
+    agent = SmartCommuteAgent(
+        userid="user1",
+        source=None,
+        destination=None
     )
 
-    assert (
-        "get_traffic_status"
-        in tools
-    )
+    initial_count = len(agent.messages)
 
-    assert (
-        "get_weather"
-        in tools
-    )
+    agent._add_message("user", "Hello")
+
+    assert len(agent.messages) == initial_count + 1
+    assert agent.messages[-1]["role"] == "user"
+    assert agent.messages[-1]["parts"][0]["text"] == "Hello"

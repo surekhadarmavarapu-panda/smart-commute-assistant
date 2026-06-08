@@ -1,12 +1,22 @@
 import json
 import urllib.request
 import urllib.error
-
 from config import GEMINI_API_KEY
 
-URL = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
+URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent"
 
-def call_gemini(payload):
+def call_gemini(messages, tools=None):
+
+    payload = {
+        "contents": messages
+    }
+
+    if tools:
+        payload["tools"] = [
+            {
+                "functionDeclarations": tools
+            }
+        ]
 
     request = urllib.request.Request(
         URL,
@@ -20,40 +30,9 @@ def call_gemini(payload):
 
     try:
         with urllib.request.urlopen(request) as response:
-            return json.loads(
-                response.read().decode("utf-8")
-            )
-
+            return json.loads(response.read().decode("utf-8"))
 
     except urllib.error.HTTPError as e:
-
-        print("HTTP Status:", e.code)
-
-        try:
-
-            error_body = e.read().decode()
-
-            print(error_body)
-
-        except:
-
-            pass
-
-        if e.code == 429:
-            return {
-
-                "error": (
-
-                    "Gemini API quota exceeded. "
-
-                    "Please try again after a minute."
-
-                )
-
-            }
-
         return {
-
             "error": f"Gemini API failed with status {e.code}"
-
         }

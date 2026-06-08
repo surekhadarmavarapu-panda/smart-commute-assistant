@@ -1,135 +1,81 @@
-
 import json
 from agentic_ai.gemini_client import call_gemini
-from agentic_ai.commute_prompt import build_commute_prompt
-from tools import (
-    get_user_details,
-    get_calendar_events,
-    get_traffic_status,
-    get_weather
-)
+from tools import get_user_details
+from agentic_ai.tools_registry import TOOL_MAP, TOOLS_SCHEMA
 
 class SmartCommuteAgent:
 
-    def __init__(self):
-        pass
+    def __init__(self, userid, source, destination):
+        self.user_id = userid
+        self.user = get_user_details(self.user_id)
 
-    def select_tools(self, question):
+        if not self.user:
+            raise ValueError(f"User '{self.user_id}' not found.")
 
-        return [
-            "get_calendar_events",
-            "get_traffic_status",
-            "get_weather"
-        ]
+        self.source = source or self.user.get("source")
+        self.destination = destination or self.user.get("destination")
 
-    def run(
-            self,
-            question,
-            user_id,
-            source=None,
-            destination=None
-    ):
+        self.messages = []
+        self._add_message(
+            "system",
+            f"""You are a smart commute assistant.Your task is to help users plan their commute by providing personalized recommendations based on their calendar, traffic conditions, and weather.
+                    User info: {json.dumps(self.user)}
+                    User Id: {self.user_id}
+                    Source: {self.source}
+                    Destination: {self.destination}
 
-        print("\nPlanning...")
-        user = get_user_details(
-            user_id
-        )
-        if not user:
-            raise ValueError(
-                f"User '{user_id}' not found."
+                    Only summarize when user explicitly asks about conversation history.
+                    Otherwise answer normally and use tools when required.
+                """
             )
 
-        if not source:
-            source = user.get("source")
+    def _add_message(self, role, text):
+        self.messages.append({
+            "role": role,
+            "parts": [{"text": text}]
+        })
 
-        if not destination:
-            destination = user.get("destination")
+    def run(self, question):
+        self._add_message("user", question)
 
-        tools = self.select_tools(
-            question
-        )
+        for _ in range(5):
+            response = call_gemini(self.messages, tools=TOOLS_SCHEMA)
 
-        events = []
-        traffic = {}
-        weather = {}
+            if "error" in response:
+                return response["error"]
 
-        if "get_calendar_events" in tools:
+            parts = response["candidates"][0]["content"]["parts"]
+            final_text = ""
+            tool_called = 0
 
-            print(
-                "Calling Calendar Tool..."
-            )
+            for part in parts:
 
-            events = get_calendar_events(
-                user_id
-            )
+                if "functionCall" in part:
+                    tool_called = 1
 
-        if "get_traffic_status" in tools:
+                    tool_name = part["functionCall"]["name"]
+                    args = part["functionCall"]["args"]
 
-            print(
-                "Calling Traffic Tool..."
-            )
+                    tool_func = TOOL_MAP.get(tool_name)
 
-            traffic = get_traffic_status(
-                source,
-                destination
-            )
-        if "get_weather" in tools:
+                    if not tool_func:
+                        self._add_message("model", f"Unknown tool: {tool_name}")
+                        continue
 
-            print(
-                "Calling Weather Tool..."
-            )
+                    result = tool_func(**args)
 
-            weather = get_weather(
-                user["location"]
-            )
+                    self._add_message(
+                        "model",
+                        f"The tool `{tool_name}` returned {json.dumps(result)}"
+                    )
 
-        tool_results = {
-            "user": user,
-            "source": source,
-            "destination": destination,
-            "calendar": events,
-            "traffic": traffic,
-            "weather": weather
-        }
+                    self._add_message("user", "continue with the task")
 
-        print("\nTool Results:")
+                else:
+                    final_text += part["text"]
 
-        print(
-            json.dumps(
-                tool_results,
-                indent=2
-            )
-        )
+            if not tool_called:
+                self._add_message("model", final_text)
+                return final_text
 
-        print(
-            "\nGenerating Recommendation..."
-        )
-        prompt = build_commute_prompt(
-            question,
-            user,
-            events,
-            traffic,
-            weather
-        )
-
-        payload = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
-                }
-            ]
-        }
-
-        response = call_gemini(payload)
-        if "error" in response:
-            return response["error"]
-
-        print("\nGemini Response:")
-        print(json.dumps(response, indent=2))
-
-        return response["candidates"][0]["content"]["parts"][0]["text"]
+        return "Sorry, I couldn't come up with a response in time."

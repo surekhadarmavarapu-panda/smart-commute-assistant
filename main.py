@@ -18,7 +18,8 @@ parser.add_argument(
 
 args = parser.parse_args()
 
-agent = SmartCommuteAgent()
+agent = SmartCommuteAgent(args.userid,source=args.source,
+            destination=args.destination)
 
 print("Smart Commute Assistant")
 
@@ -35,10 +36,7 @@ while True:
     try:
 
         answer = agent.run(
-            question=question,
-            user_id=args.userid,
-            source=args.source,
-            destination=args.destination
+            question=question
         )
         print(answer)
 
