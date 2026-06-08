@@ -1,0 +1,16 @@
+{
+  "KPHB-Nanakramguda": {
+    "travel_time_minutes": 65,
+    "traffic": "Heavy"
+  },
+
+  "Whitefield-kormangla": {
+    "travel_time_minutes": 35,
+    "traffic": "Moderate"
+  },
+
+  "Tharamani-perungudi": {
+    "travel_time_minutes": 20,
+    "traffic": "Light"
+  }
+}

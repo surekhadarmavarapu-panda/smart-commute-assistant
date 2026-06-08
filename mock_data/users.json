@@ -1,0 +1,22 @@
+{
+  "user1": {
+    "name": "Surekha",
+    "location": "Hyderabad",
+     "source": "KPHB",
+    "destination": "Nanakramguda"
+  },
+
+"user2": {
+    "name": "Mani",
+    "location": "Bangalore",
+    "source": "Whitefield",
+    "destination": "kormangla"
+  },
+
+  "user3": {
+    "name": "William",
+    "location": "Chennai",
+    "source": "Tharamani",
+    "destination": "perungudi"
+  }
+}

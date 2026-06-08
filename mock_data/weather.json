@@ -1,0 +1,13 @@
+{
+  "Hyderabad": {
+    "condition": "Rain"
+  },
+
+  "Bangalore": {
+    "condition": "Cloudy"
+  },
+
+  "Chennai": {
+    "condition": "Sunny"
+  }
+}
