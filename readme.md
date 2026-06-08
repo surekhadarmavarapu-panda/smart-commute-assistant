@@ -13,6 +13,11 @@ Smart Commute Assistant is a CLI-based Python project that helps users plan thei
 
 `cd smart-commute-assistant`
 
+### Environment Setup
+Before running the project, set your Gemini API key:
+
+` export GEMINI_API_KEY="your_api_key_here"`
+
 ### How to Run
 
 `python main.py --userid [user1/user2/user3]`
